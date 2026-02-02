@@ -14,21 +14,49 @@ Download A-share stock reports from cninfo.com.cn and upload them to NotebookLM 
 
 ## 🚀 Usage
 
-### Installation
+### Installation (Recommended)
+
+1. Use `npx` to install this skill directly to your agent:
+
+   ```bash
+   npx skills add jarodise/CNinfo2Notebookllm
+   ```
+
+2. Install dependencies (First time only):
+
+   ```bash
+   # Enter the skill directory (e.g., ~/.gemini/antigravity/skills/cninfo-to-notebooklm)
+   cd <skill_directory>
+   
+   # Run the setup script
+   ./install.sh
+   # OR
+   pip install -r requirements.txt && playwright install chromium
+   ```
+
+3. Authenticate with NotebookLM:
+
+   ```bash
+   notebooklm login
+   ```
+
+### Manual Installation
 
 1. Clone this repository:
+
    ```bash
    git clone https://github.com/jarodise/CNinfo2Notebookllm.git
    cd CNinfo2Notebookllm
    ```
 
-2. Install dependencies:
+2. Run setup:
+
    ```bash
-   pip install -r requirements.txt
-   playwright install chromium
+   ./install.sh
    ```
 
-3. Authenticate with NotebookLM (one-time setup):
+3. Authenticate:
+
    ```bash
    notebooklm login
    ```
@@ -50,6 +78,7 @@ python3 scripts/run.py "贵州茅台"
 This tool is designed to be easily used by AI agents (Claude, ChatGPT, etc.) that have shell access.
 
 **Agent Instructions:**
+
 1. Execute `python3 scripts/run.py <stock_name_or_code>`
 2. Parse the JSON output (if needed) or read the standard output for the Notebook URL.
 
@@ -72,4 +101,3 @@ cninfo-to-notebooklm/
 ## ⚠️ Disclaimer
 
 For educational and research purposes only. Please ensure compliance with cninfo.com.cn and Google NotebookLM terms of service. Financial analysis provided by AI is for reference only and does not constitute investment advice.
-
