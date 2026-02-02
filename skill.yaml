@@ -15,3 +15,5 @@ dependencies:
   - notebooklm-py
   - playwright
   - httpx
+  - click
+  - rich

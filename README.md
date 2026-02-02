@@ -1,93 +1,75 @@
-# � CNinfo to NotebookLM
+# CNinfo to NotebookLM
 
-自动下载中国 A 股上市公司年报/季报，并上传至 Google NotebookLM 进行 AI 驱动的深度财务分析。
+Download A-share stock reports from cninfo.com.cn and upload them to NotebookLM for AI-powered analysis with a specialized "Financial Analyst" persona.
 
-> 💡 **注**：本工具会自动为 NotebookLM 配置基于《手把手教你读财报》方法论的专业“财务分析师”角色，帮助你进行财务排雷和估值分析。
+> 💡 **Note**: This tool automatically configures NotebookLM with a professional "Financial Analyst" persona based on the "Hand-holding Financial Reporting" methodology.
 
-## ✨ 核心功能
+## ✨ Features
 
-- 📥 **智能下载**: 自动抓取近 5 年年报 + 当年所有定期报告（一季报/中报/三季报）。
-- 🤖 **AI 分析师角色**: 自动植入专业 System Prompt，进行排雷、估值和击球区判断。
-- 📦 **全自动工作流**: 一键完成下载、笔记本创建、角色配置和文件上传。
-- 🧹 **自动清理**: 上传后自动清理临时 PDF 文件，保持磁盘整洁。
-- 🔐 **稳定鉴权**: 使用 `notebooklm-py` 配合浏览器自动化登录，解决 Cookie 过期问题。
+- 📥 **Smart Download**: Automatically fetches annual reports (last 5 years) + all periodic reports for the current year (Q1/Semi/Q3).
+- 🤖 **AI Analyst Persona**: Auto-injects a specialized System Prompt for risk detection, valuation, and "strike zone" analysis.
+- 📦 **Automated Workflow**: One-step download, notebook creation, persona configuration, and file upload.
+- 🧹 **Auto Cleanup**: Automatically removes temporary PDF files after upload.
+- 🔐 **Stable Auth**: Uses `notebooklm-py` with browser automation for reliable authentication.
 
-## 🎯 作为 Claude Skill 使用 (推荐)
+## 🚀 Usage
 
-### 安装
+### Installation
 
-```bash
-# 1. 进入你的 skills 目录 (例如 ~/.gemini/antigravity/skills)
-cd ~/.gemini/antigravity/skills
+1. Clone this repository:
+   ```bash
+   git clone https://github.com/jarodise/CNinfo2Notebookllm.git
+   cd CNinfo2Notebookllm
+   ```
 
-# 2. 克隆仓库
-git clone https://github.com/jarodise/CNinfo2Notebookllm.git cninfo-to-notebooklm
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   playwright install chromium
+   ```
 
-# 3. 安装依赖
-cd cninfo-to-notebooklm
-pip install -r requirements.txt
-playwright install chromium
+3. Authenticate with NotebookLM (one-time setup):
+   ```bash
+   notebooklm login
+   ```
 
-# 4. 完成初始登录 (仅需一次)
-notebooklm login
-```
+### Running the Tool
 
-### 使用方法
-
-直接告诉 Claude Code：
-
-```text
-使用 cninfo-to-notebooklm 技能分析 600519
-```
-
-或者
-
-```text
-运行 cninfo-to-notebooklm 分析平安银行
-```
-
-Claude 将会自动：
-
-1. 查找股票代码（如果提供的是名称）
-2. 下载相关历史财报
-3. 创建并配置 NotebookLM 笔记本
-4. 上传所有 PDF 文件
-5. 返回笔记本链接
-
----
-
-## 🛠️ 手动使用
-
-你也可以直接在终端运行脚本：
+You can run the tool directly from the terminal:
 
 ```bash
-# 按股票代码分析
-python3 scripts/run.py 000519
+# Analyze by Stock Code
+python3 scripts/run.py 600519
 
-# 按股票名称分析
+# Analyze by Stock Name
 python3 scripts/run.py "贵州茅台"
 ```
 
-## 📂 项目结构
+### Using with AI Agents
+
+This tool is designed to be easily used by AI agents (Claude, ChatGPT, etc.) that have shell access.
+
+**Agent Instructions:**
+1. Execute `python3 scripts/run.py <stock_name_or_code>`
+2. Parse the JSON output (if needed) or read the standard output for the Notebook URL.
+
+## 📂 Project Structure
 
 ```
 cninfo-to-notebooklm/
-├── skill.yaml          # Skill 定义文件
-├── package.json        # 项目元数据
-├── SKILL.md            # LLM 指令文档
+├── skill.yaml          # Skill definition (for compatible agents)
+├── package.json        # Project metadata
+├── SKILL.md            # LLM Instructions / Context
 ├── scripts/
-│   ├── run.py          # 主流程控制
-│   ├── download.py     # 巨潮资讯下载逻辑
-│   └── upload.py       # NotebookLM 交互逻辑
+│   ├── run.py          # Main orchestration script
+│   ├── download.py     # Download logic
+│   └── upload.py       # NotebookLM interaction logic
 └── assets/
-    ├── financial_analyst_prompt.txt  # AI 分析师 Prompt
-    └── stocks.json                   # A股股票数据库
+    ├── financial_analyst_prompt.txt  # System Prompt
+    └── stocks.json                   # Stock database
 ```
 
-## 🔧 配置
+## ⚠️ Disclaimer
 
-“财务分析师”的角色定义在 `assets/financial_analyst_prompt.txt` 文件中。你可以修改此文件来定制 AI 分析财报的逻辑和关注点。
+For educational and research purposes only. Please ensure compliance with cninfo.com.cn and Google NotebookLM terms of service. Financial analysis provided by AI is for reference only and does not constitute investment advice.
 
-## ⚠️ 免责声明
-
-本工具仅供教育和研究使用。请确保遵守巨潮资讯网 (cninfo.com.cn) 和 Google NotebookLM 的服务条款。AI 角色提供的财务分析仅供参考，不构成专业投资建议。

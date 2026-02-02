@@ -40,8 +40,10 @@ User provides stock name/code
 
 ### Step 1: Run Main Orchestration Script
 
+Run the script from the skill directory:
+
 ```bash
-python3 ~/.gemini/antigravity/skills/cninfo-to-notebooklm/scripts/run.py <stock_code_or_name>
+python3 scripts/run.py <stock_code_or_name>
 ```
 
 Examples:

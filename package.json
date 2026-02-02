@@ -4,13 +4,14 @@
     "description": "Download annual and periodic reports for China A-share stocks from cninfo.com.cn and upload them to NotebookLM.",
     "scripts": {
         "start": "python3 scripts/run.py",
-        "test": "python3 -m unittest discover tests"
+        "analyze": "python3 scripts/run.py"
     },
     "keywords": [
         "cninfo",
         "notebooklm",
         "stocks",
-        "financial-analysis"
+        "financial-analysis",
+        "agent-skill"
     ],
     "author": "Jarodise",
     "license": "MIT"
