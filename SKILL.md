@@ -18,7 +18,7 @@ Download annual and periodic reports for China A-share stocks from cninfo.com.cn
 
 ## Core Workflow
 
-```
+```text
 User provides stock name/code
         ↓
 1. Look up stock in database
@@ -37,6 +37,19 @@ User provides stock name/code
 ```
 
 ## Step-by-Step Instructions
+
+### Step 0: Environment Setup (First Run Only)
+
+**Crucial**: Before running the script, verify the environment is ready.
+
+1. **Check Dependencies**: Verify if the dependencies are installed (specifically `notebooklm` and `playwright`).
+2. **Install**: If dependencies are missing or this is the first run, execute the installation script:
+
+   ```bash
+   chmod +x install.sh && ./install.sh
+   ```
+
+3. **Authenticate**: Ensure the user has authenticated with NotebookLM (`notebooklm login`). If not, ask them to do so.
 
 ### Step 1: Run Main Orchestration Script
 
@@ -77,7 +90,7 @@ This prompt configures NotebookLM to act as a "Financial Report Analyst" based o
 ## Error Handling
 
 | Error | Solution |
-|-------|----------|
+| :--- | :--- |
 | Stock not found | Check if code is valid A-share (000xxx, 002xxx, 300xxx, 600xxx, etc.) |
 | NotebookLM CLI not found | Ensure `notebooklm-py` matches `requirements.txt` and is in PATH |
 | Auth missing | Run `notebooklm login` to authenticate via browser |
@@ -93,7 +106,7 @@ This prompt configures NotebookLM to act as a "Financial Report Analyst" based o
 ## Quick Reference
 
 | Report Type | Category Code | Period |
-|-------------|---------------|--------|
+| :--- | :--- | :--- |
 | Annual | `category_ndbg_szsh` | Previous 5 years |
 | Semi-Annual | `category_bndbg_szsh` | Current year |
 | Q1 Report | `category_yjdbg_szsh` | Current year |

@@ -23,12 +23,13 @@
    npx skills add jarodise/CNinfo2Notebookllm
    ```
 
-2. **安装依赖** (仅首次需要)
-   进入安装好的 skill 目录 (通常在 `~/.gemini/antigravity/skills/cninfo-to-notebooklm` 或类似位置)，然后运行设置脚本：
+2. **安装依赖** (首次运行)
+   - **如果你使用 Agent**: 直接要求 Agent "开始分析股票"，它会自动检测并运行安装脚本。
+   - **如果你手动运行**: 请进入目录并运行脚本：
 
-   ```bash
-   cd <skill_directory> && ./install.sh
-   ```
+     ```bash
+     cd <skill_directory> && ./install.sh
+     ```
 
 3. **认证登录**
    如果你之前没用过 NotebookLM，请先登录：
@@ -55,8 +56,9 @@ python3 scripts/run.py "贵州茅台"
 
 **Agent 指令:**
 
-1. 执行 `python3 scripts/run.py <股票名称或代码>`
-2. 解析 JSON 输出 (如有需要) 或直接读取标准输出中的 Notebook 链接。
+1. **环境准备 (首次运行)**: 检查依赖，若未安装则执行 `./install.sh`。
+2. **执行分析**: 运行 `python3 scripts/run.py <股票名称或代码>`。
+3. **获取结果**: 解析 JSON 输出或读取标准输出中的 Notebook 链接。
 
 ## 📂 项目结构
 
