@@ -1,0 +1,17 @@
+{
+    "name": "cninfo-to-notebooklm",
+    "version": "1.0.0",
+    "description": "Download annual and periodic reports for China A-share stocks from cninfo.com.cn and upload them to NotebookLM.",
+    "scripts": {
+        "start": "python3 scripts/run.py",
+        "test": "python3 -m unittest discover tests"
+    },
+    "keywords": [
+        "cninfo",
+        "notebooklm",
+        "stocks",
+        "financial-analysis"
+    ],
+    "author": "Jarodise",
+    "license": "MIT"
+}
