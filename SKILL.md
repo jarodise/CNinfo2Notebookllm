@@ -1,27 +1,34 @@
 ---
 name: cninfo-to-notebooklm
-description: Use when user wants to analyze China A-share stock reports, upload annual/quarterly reports to NotebookLM, or research a Chinese listed company's financials
+description: Use when user wants to analyze China stock reports (A-share or Hong Kong), upload annual/quarterly reports to NotebookLM, or research a Chinese listed company's financials
 ---
 
 # CNinfo to NotebookLM
 
 ## Overview
 
-Download annual and periodic reports for China A-share stocks from cninfo.com.cn and upload them to NotebookLM for AI-powered analysis with a specialized "Financial Analyst" persona.
+Download annual and periodic reports for China A-share and Hong Kong stocks from cninfo.com.cn and upload them to NotebookLM for AI-powered analysis with a specialized "Financial Analyst" persona.
 
 ## When to Use
 
-- User provides a China A-share stock name or code
+- User provides a China stock name or code (A-share or Hong Kong)
 - User wants to analyze a company's financial reports
 - User asks to "download reports" or "research" a Chinese stock
 - User wants to upload stock reports to NotebookLM
+
+## Supported Markets
+
+| Market | Code Pattern | Examples |
+| :--- | :--- | :--- |
+| A-share | 6-digit codes (0xxxxx, 3xxxxx, 6xxxxx) | 600519 (贵州茅台), 000001 (平安银行) |
+| Hong Kong | 5-digit codes (00xxx, 01xxx, 02xxx, 09xxx) | 00700 (腾讯控股), 09988 (阿里巴巴) |
 
 ## Core Workflow
 
 ```text
 User provides stock name/code
         ↓
-1. Look up stock in database
+1. Look up stock in database (auto-detect market)
         ↓
 2. Download reports from cninfo:
    - Last 5 years annual reports (年度报告)
@@ -61,8 +68,10 @@ python3 scripts/run.py <stock_code_or_name>
 
 Examples:
 
-- `python3 scripts/run.py 600350`
-- `python3 scripts/run.py 山东高速`
+- `python3 scripts/run.py 600350` - A-share stock
+- `python3 scripts/run.py 山东高速` - A-share by name
+- `python3 scripts/run.py 00700` - Hong Kong stock (Tencent)
+- `python3 scripts/run.py 腾讯控股` - Hong Kong by name
 
 This script handles everything:
 
@@ -78,6 +87,7 @@ Provide:
 
 - ✅ Number of reports downloaded & uploaded
 - 📚 NotebookLM notebook ID
+- 📊 Market type (A-share or Hong Kong)
 - 💡 Remind user the notebook creates a "Financial Analyst" persona for deep analysis.
 
 ## Configuration
@@ -91,7 +101,7 @@ This prompt configures NotebookLM to act as a "Financial Report Analyst" based o
 
 | Error | Solution |
 | :--- | :--- |
-| Stock not found | Check if code is valid A-share (000xxx, 002xxx, 300xxx, 600xxx, etc.) |
+| Stock not found | Check if code is valid A-share or Hong Kong stock |
 | NotebookLM CLI not found | Ensure `notebooklm-py` matches `requirements.txt` and is in PATH |
 | Auth missing | Run `notebooklm login` to authenticate via browser |
 | Upload failed | Check network connection and NotebookLM service status |
@@ -105,9 +115,21 @@ This prompt configures NotebookLM to act as a "Financial Report Analyst" based o
 
 ## Quick Reference
 
+### A-share Report Types
+
 | Report Type | Category Code | Period |
 | :--- | :--- | :--- |
 | Annual | `category_ndbg_szsh` | Previous 5 years |
 | Semi-Annual | `category_bndbg_szsh` | Current year |
 | Q1 Report | `category_yjdbg_szsh` | Current year |
 | Q3 Report | `category_sjdbg_szsh` | Current year |
+
+### Hong Kong Stock Differences
+
+| Aspect | A-share | Hong Kong |
+| :--- | :--- | :--- |
+| Market code | `szse` | `hke` |
+| Categories | Uses category codes | Empty categories |
+| Search key | Uses Chinese search terms | Empty search key |
+| Report naming | `YYYY年年度报告` | May use Arabic/Chinese numerals |
+| Search period | Following year (March-June) | Same year or following year |

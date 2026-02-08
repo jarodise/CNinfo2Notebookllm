@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Download A-share stock reports from cninfo.com.cn
+Download A-share and Hong Kong stock reports from cninfo.com.cn
 Stores PDFs in temporary directory, outputs file paths for upload
 """
 
@@ -20,8 +20,25 @@ STOCKS_JSON = os.path.join(
 )
 
 
+def to_chinese_year(year: int) -> str:
+    """Convert year to Chinese numerals (e.g., 2023 -> 二零二三)"""
+    mapping = {
+        "0": "零",
+        "1": "一",
+        "2": "二",
+        "3": "三",
+        "4": "四",
+        "5": "五",
+        "6": "六",
+        "7": "七",
+        "8": "八",
+        "9": "九",
+    }
+    return "".join(mapping[d] for d in str(year))
+
+
 class CnInfoDownloader:
-    """Downloads reports from cninfo.com.cn"""
+    """Downloads reports from cninfo.com.cn - supports A-share and Hong Kong stocks"""
 
     def __init__(self):
         self.cookies = {
@@ -46,25 +63,43 @@ class CnInfoDownloader:
                 return json.load(f)
         return {}
 
+    def _detect_market(self, stock_code: str) -> str:
+        """Auto-detect market based on stock code"""
+        # Check database first (most reliable)
+        if stock_code in self.market_to_stocks.get("hke", {}):
+            return "hke"
+        if stock_code in self.market_to_stocks.get("szse", {}):
+            return "szse"
+
+        # Fallback to code pattern
+        # Hong Kong: typically 5 digits, often starting with 00, 01, 02, 09
+        if len(stock_code) == 5 and stock_code.startswith(("00", "01", "02", "09")):
+            return "hke"
+        # A-shares: 6 digits starting with 0, 3, 6
+        if len(stock_code) == 6 and stock_code[0] in "036":
+            return "szse"
+
+        return "szse"  # Default to A-share
+
     def find_stock(self, stock_input: str) -> tuple:
         """
         Find stock by code or name
-        Returns: (stock_code, stock_info) or (None, None)
+        Returns: (stock_code, stock_info, market) or (None, None, None)
         """
         # Try as code first
-        for market_stocks in self.market_to_stocks.values():
+        for market, market_stocks in self.market_to_stocks.items():
             if stock_input in market_stocks:
-                return stock_input, market_stocks[stock_input]
+                return stock_input, market_stocks[stock_input], market
 
         # Try as name
-        for market_stocks in self.market_to_stocks.values():
+        for market, market_stocks in self.market_to_stocks.items():
             for code, info in market_stocks.items():
                 if info.get("zwjc") == stock_input:
-                    return code, info
+                    return code, info, market
 
-        return None, None
+        return None, None, None
 
-    def _query_announcements(self, filter_params: dict) -> list:
+    def _query_announcements(self, filter_params: dict, market: str = "szse") -> list:
         """Query cninfo API for announcements"""
         client = httpx.Client(
             headers=self.headers, cookies=self.cookies, timeout=self.timeout
@@ -81,22 +116,9 @@ class CnInfoDownloader:
         if not stock_info:
             return []
 
-        payload = {
-            "pageNum": 0,
-            "pageSize": 30,
-            "column": "szse",  # A-share market
-            "tabName": "fulltext",
-            "plate": "",
-            "stock": f"{stock_code},{stock_info['orgId']}",
-            "searchkey": filter_params.get("searchkey", ""),
-            "secid": "",
-            "category": ";".join(filter_params.get("category", [])),
-            "trade": "",
-            "seDate": filter_params.get("seDate", ""),
-            "sortName": "",
-            "sortType": "",
-            "isHLtitle": False,
-        }
+        payload = self._build_payload(
+            stock_code, stock_info, market, filter_params
+        )
 
         announcements = []
         has_more = True
@@ -113,6 +135,35 @@ class CnInfoDownloader:
                 break
 
         return announcements
+
+    def _build_payload(
+        self, stock_code: str, stock_info: dict, market: str, filter_params: dict
+    ) -> dict:
+        """Build API payload with market-aware parameters"""
+        # Hong Kong stocks use empty categories and searchkey
+        if market == "hke":
+            category = ""
+            searchkey = ""
+        else:
+            category = ";".join(filter_params.get("category", []))
+            searchkey = filter_params.get("searchkey", "")
+
+        return {
+            "pageNum": 0,
+            "pageSize": 30,
+            "column": market,  # 'szse' for A-share, 'hke' for Hong Kong
+            "tabName": "fulltext",
+            "plate": "",
+            "stock": f"{stock_code},{stock_info['orgId']}",
+            "searchkey": searchkey,
+            "secid": "",
+            "category": category,
+            "trade": "",
+            "seDate": filter_params.get("seDate", ""),
+            "sortName": "",
+            "sortType": "",
+            "isHLtitle": False,
+        }
 
     def _download_pdf(self, announcement: dict, output_dir: str) -> str:
         """Download a single PDF file, returns file path"""
@@ -147,15 +198,53 @@ class CnInfoDownloader:
 
         return filepath
 
-    def _is_main_annual_report(self, title: str, year: int) -> bool:
+    def _is_main_annual_report(self, title: str, year: int, market: str = "szse") -> bool:
         """Check if this is the main annual report (not summary/English)"""
-        if f"{year}年年度报告" not in title and f"{year}年年报" not in title:
-            return False
-        if "摘要" in title or "英文" in title or "summary" in title.lower():
-            return False
-        if "更正" in title or "修订" in title:
-            return False
-        return True
+        chinese_year = to_chinese_year(year)
+
+        if market == "hke":
+            # Hong Kong naming patterns
+            # Check for both Arabic (2023) and Chinese (二零二三) numerals
+            has_year = f"{year}" in title or chinese_year in title
+            is_annual = (
+                "annual report" in title.lower()
+                or "年度报告" in title
+                or "年报" in title
+                or f"{year}财务年度报告" in title
+            )
+            is_summary = (
+                "summary" in title.lower()
+                or "摘要" in title
+            )
+            is_quarterly = (
+                "季度" in title
+                or "半年度" in title
+                or "中期" in title
+            )
+            is_english_only = "英文" in title
+
+            return has_year and is_annual and not is_summary and not is_quarterly and not is_english_only
+        else:
+            # Mainland China naming patterns
+            if f"{year}年年度报告" not in title and f"{year}年年报" not in title:
+                return False
+            if "摘要" in title or "英文" in title or "summary" in title.lower():
+                return False
+            if "更正" in title or "修订" in title:
+                return False
+            return True
+
+    def _get_annual_report_search_period(self, year: int, market: str = "szse") -> tuple:
+        """Get search period for annual reports based on market"""
+        if market == "hke":
+            # HK stocks may publish in the same year
+            search_start = f"{year}-01-01"
+            search_end = f"{year + 1}-06-30"
+        else:
+            # A-shares are published in the following year (March-April)
+            search_start = f"{year + 1}-03-01"
+            search_end = f"{year + 1}-06-30"
+        return search_start, search_end
 
     def _is_main_periodic_report(self, title: str, report_type: str) -> bool:
         """Check if this is a main periodic report"""
@@ -174,27 +263,34 @@ class CnInfoDownloader:
         return False
 
     def download_annual_reports(
-        self, stock_code: str, years: list, output_dir: str
+        self, stock_code: str, years: list, output_dir: str, market: str = "szse"
     ) -> list:
         """Download annual reports for specified years"""
         downloaded = []
 
         for year in years:
-            # Annual reports are published in the following year (March-April)
-            search_start = f"{year + 1}-01-01"
-            search_end = f"{year + 1}-06-30"
+            search_start, search_end = self._get_annual_report_search_period(year, market)
 
-            filter_params = {
-                "stock": [stock_code],
-                "category": ["category_ndbg_szsh"],  # Annual reports
-                "searchkey": f"{year}年年度报告",
-                "seDate": f"{search_start}~{search_end}",
-            }
+            # Build filter params based on market
+            if market == "hke":
+                filter_params = {
+                    "stock": [stock_code],
+                    "category": [],  # HK stocks don't use categories
+                    "searchkey": "",  # HK stocks use empty search key
+                    "seDate": f"{search_start}~{search_end}",
+                }
+            else:
+                filter_params = {
+                    "stock": [stock_code],
+                    "category": ["category_ndbg_szsh"],  # Annual reports
+                    "searchkey": f"{year}年年度报告",
+                    "seDate": f"{search_start}~{search_end}",
+                }
 
-            announcements = self._query_announcements(filter_params)
+            announcements = self._query_announcements(filter_params, market)
 
             for ann in announcements:
-                if self._is_main_annual_report(ann["announcementTitle"], year):
+                if self._is_main_annual_report(ann["announcementTitle"], year, market):
                     filepath = self._download_pdf(ann, output_dir)
                     if filepath:
                         downloaded.append(filepath)
@@ -204,11 +300,13 @@ class CnInfoDownloader:
         return downloaded
 
     def download_periodic_reports(
-        self, stock_code: str, year: int, output_dir: str
+        self, stock_code: str, year: int, output_dir: str, market: str = "szse"
     ) -> list:
         """Download Q1, semi-annual, Q3 reports for current year"""
         downloaded = []
 
+        # Note: HK stocks may not have the same periodic report structure
+        # Using same config for both markets
         report_configs = [
             (
                 "q1",
@@ -234,14 +332,22 @@ class CnInfoDownloader:
         ]
 
         for report_type, category, search_term, start_date, end_date in report_configs:
-            filter_params = {
-                "stock": [stock_code],
-                "category": [category],
-                "searchkey": search_term,
-                "seDate": f"{start_date}~{end_date}",
-            }
+            if market == "hke":
+                filter_params = {
+                    "stock": [stock_code],
+                    "category": [],  # HK stocks don't use categories
+                    "searchkey": "",  # HK stocks use empty search key
+                    "seDate": f"{start_date}~{end_date}",
+                }
+            else:
+                filter_params = {
+                    "stock": [stock_code],
+                    "category": [category],
+                    "searchkey": search_term,
+                    "seDate": f"{start_date}~{end_date}",
+                }
 
-            announcements = self._query_announcements(filter_params)
+            announcements = self._query_announcements(filter_params, market)
 
             for ann in announcements:
                 if self._is_main_periodic_report(ann["announcementTitle"], report_type):
@@ -258,7 +364,8 @@ def main():
     """Main entry point - downloads reports and prints file paths"""
     if len(sys.argv) < 2:
         print("Usage: python download.py <stock_code_or_name> [output_dir]")
-        print("Example: python download.py 600350")
+        print("Example: python download.py 600350        # A-share")
+        print("Example: python download.py 00700        # Hong Kong stock")
         print("Example: python download.py 山东高速")
         sys.exit(1)
 
@@ -269,14 +376,15 @@ def main():
 
     downloader = CnInfoDownloader()
 
-    # Find stock
-    stock_code, stock_info = downloader.find_stock(stock_input)
+    # Find stock (now returns market too)
+    stock_code, stock_info, market = downloader.find_stock(stock_input)
     if not stock_code:
         print(f"❌ Stock not found: {stock_input}", file=sys.stderr)
         sys.exit(1)
 
     stock_name = stock_info.get("zwjc", stock_code)
-    print(f"📊 Found stock: {stock_code} ({stock_name})")
+    market_display = "Hong Kong" if market == "hke" else "A-share"
+    print(f"📊 Found stock: {stock_code} ({stock_name}) [{market_display}]")
     print(f"📁 Output directory: {output_dir}")
 
     # Calculate years
@@ -285,26 +393,26 @@ def main():
 
     print(f"\n📥 Downloading annual reports for: {annual_years}")
     annual_files = downloader.download_annual_reports(
-        stock_code, annual_years, output_dir
+        stock_code, annual_years, output_dir, market
     )
 
     # Try current year for periodic reports, fallback to previous year
     print(f"\n📥 Downloading periodic reports (Q1, semi-annual, Q3)...")
     periodic_files = downloader.download_periodic_reports(
-        stock_code, current_year, output_dir
+        stock_code, current_year, output_dir, market
     )
 
     # If no periodic reports found in current year, try previous year
     if not periodic_files:
         print(f"   No {current_year} reports yet, trying {current_year - 1}...")
         periodic_files = downloader.download_periodic_reports(
-            stock_code, current_year - 1, output_dir
+            stock_code, current_year - 1, output_dir, market
         )
     # If some but not all, also check previous year for missing ones
     elif len(periodic_files) < 3:
         print(f"   Checking {current_year - 1} for additional reports...")
         prev_year_files = downloader.download_periodic_reports(
-            stock_code, current_year - 1, output_dir
+            stock_code, current_year - 1, output_dir, market
         )
         periodic_files.extend(prev_year_files)
 
@@ -321,6 +429,7 @@ def main():
     result = {
         "stock_code": stock_code,
         "stock_name": stock_name,
+        "market": market,
         "output_dir": output_dir,
         "files": all_files,
     }

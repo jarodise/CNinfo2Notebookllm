@@ -3,7 +3,7 @@
 """
 CNinfo to NotebookLM - Main Orchestration Script
 
-Downloads A-share stock reports from cninfo.com.cn and uploads to NotebookLM.
+Downloads A-share and Hong Kong stock reports from cninfo.com.cn and uploads to NotebookLM.
 """
 
 import sys
@@ -25,8 +25,10 @@ def main():
         print("Usage: python run.py <stock_code_or_name>")
         print("")
         print("Examples:")
-        print("  python run.py 600519       # By stock code")
-        print("  python run.py 贵州茅台      # By name")
+        print("  python run.py 600519       # A-share by code")
+        print("  python run.py 贵州茅台      # A-share by name")
+        print("  python run.py 00700        # Hong Kong stock by code")
+        print("  python run.py 腾讯控股      # Hong Kong stock by name")
         print("")
         print("This will:")
         print("  1. Download annual reports (last 5 years)")
@@ -39,14 +41,15 @@ def main():
     # Initialize downloader
     downloader = CnInfoDownloader()
 
-    # Find stock
-    stock_code, stock_info = downloader.find_stock(stock_input)
+    # Find stock (now returns market too)
+    stock_code, stock_info, market = downloader.find_stock(stock_input)
     if not stock_code:
         print(f"❌ Stock not found: {stock_input}", file=sys.stderr)
         sys.exit(1)
 
     stock_name = stock_info.get("zwjc", stock_code)
-    print(f"📊 Found stock: {stock_code} ({stock_name})")
+    market_display = "Hong Kong" if market == "hke" else "A-share"
+    print(f"📊 Found stock: {stock_code} ({stock_name}) [{market_display}]")
 
     # Create temp directory
     output_dir = tempfile.mkdtemp(prefix="cninfo_reports_")
@@ -59,24 +62,24 @@ def main():
     # Download annual reports
     print(f"\n📥 Downloading annual reports for: {annual_years}")
     annual_files = downloader.download_annual_reports(
-        stock_code, annual_years, output_dir
+        stock_code, annual_years, output_dir, market
     )
 
     # Download periodic reports
     print(f"\n📥 Downloading periodic reports (Q1, semi-annual, Q3)...")
     periodic_files = downloader.download_periodic_reports(
-        stock_code, current_year, output_dir
+        stock_code, current_year, output_dir, market
     )
 
     if not periodic_files:
         print(f"   No {current_year} reports yet, trying {current_year - 1}...")
         periodic_files = downloader.download_periodic_reports(
-            stock_code, current_year - 1, output_dir
+            stock_code, current_year - 1, output_dir, market
         )
     elif len(periodic_files) < 3:
         print(f"   Checking {current_year - 1} for additional reports...")
         prev_year_files = downloader.download_periodic_reports(
-            stock_code, current_year - 1, output_dir
+            stock_code, current_year - 1, output_dir, market
         )
         periodic_files.extend(prev_year_files)
 
@@ -103,6 +106,7 @@ def main():
         result = {
             "stock_code": stock_code,
             "stock_name": stock_name,
+            "market": market,
             "output_dir": output_dir,
             "files": all_files,
         }
@@ -148,7 +152,7 @@ def main():
     print(f"\n{'=' * 50}")
     print(f"🎉 COMPLETE!")
     print(f"{'=' * 50}")
-    print(f"📊 Stock: {stock_code} ({stock_name})")
+    print(f"📊 Stock: {stock_code} ({stock_name}) [{market_display}]")
     print(f"📚 Notebook: {notebook_title}")
     print(f"📄 Uploaded: {len(results['success'])} reports")
     if results["failed"]:
